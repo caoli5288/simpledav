@@ -1,0 +1,12 @@
+<D:response xmlns:lp1="DAV:">
+    <D:href>%path%</D:href>
+    <D:propstat>
+        <D:prop>
+            <lp1:resourcetype />
+            <lp1:getcontentlength>%size%</lp1:getcontentlength>
+            <lp1:getlastmodified>%date%</lp1:getlastmodified>
+            <D:getcontenttype>text/plain</D:getcontenttype>
+        </D:prop>
+        <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+</D:response>
