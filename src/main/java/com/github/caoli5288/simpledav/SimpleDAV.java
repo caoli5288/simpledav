@@ -2,7 +2,7 @@ package com.github.caoli5288.simpledav;
 
 import com.github.caoli5288.simpledav.fs.FileNode;
 import com.github.caoli5288.simpledav.fs.IFileSystem;
-import com.github.caoli5288.simpledav.fs.mongodb.MongodbFileSystem;
+import com.github.caoli5288.simpledav.fs.mongodb.GridFileSystem;
 import io.javalin.Javalin;
 import io.javalin.core.JavalinConfig;
 import io.javalin.http.Context;
@@ -40,6 +40,7 @@ public class SimpleDAV {
     }
 
     private static Javalin configServer(Javalin javalin) {
+        Utils.let(System.getProperty("auth.basic"), s -> javalin.before(BasicAccessor.extract(s)));
         return javalin;
     }
 
@@ -83,6 +84,9 @@ public class SimpleDAV {
     }
 
     private static void apply(String method, Context context) {
+        if (context.status() != 200) {
+            return;
+        }
         switch (method) {
             case "PROPFIND":
                 find(context);
@@ -116,7 +120,7 @@ public class SimpleDAV {
         Properties properties = new Properties();
         properties.load(new FileReader(file));
         properties.forEach(System.getProperties()::putIfAbsent);
-        fs = new MongodbFileSystem(System.getProperty("mongodb.url"), System.getProperty("mongodb.db"));
+        fs = new GridFileSystem(System.getProperty("mongodb.url"), System.getProperty("mongodb.db"));
         fs.setup();
     }
 

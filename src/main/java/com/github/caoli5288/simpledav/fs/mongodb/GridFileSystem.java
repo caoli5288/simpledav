@@ -13,22 +13,21 @@ import com.mongodb.client.gridfs.GridFSFindIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.model.Filters;
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
-public class MongodbFileSystem implements IFileSystem {
+public class GridFileSystem implements IFileSystem {
 
-    private final Map<String, GridFSBucket> buckets = new HashMap<>();
+    private final Map<String, GridFSBucket> buckets = new ConcurrentHashMap<>();
     private final String url;
     private final String dbName;
     private MongoDatabase db;
@@ -53,7 +52,7 @@ public class MongodbFileSystem implements IFileSystem {
             return nodes;
         }
         // others
-        Filepath filepath = Filepath.extract(fullUrl);
+        GridFilepath filepath = GridFilepath.extract(fullUrl);
         Objects.requireNonNull(filepath);
         GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
         if (fullUrl.endsWith("/")) {
@@ -75,7 +74,7 @@ public class MongodbFileSystem implements IFileSystem {
     @Override
     @Nullable
     public InputStream cat(String fullUrl) {
-        Filepath filepath = Filepath.extract(fullUrl);
+        GridFilepath filepath = GridFilepath.extract(fullUrl);
         Objects.requireNonNull(filepath);
         GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
         GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
@@ -87,12 +86,13 @@ public class MongodbFileSystem implements IFileSystem {
 
     @Override
     public void rm(String fullUrl) {
-        Filepath filepath = Filepath.extract(fullUrl);
+        GridFilepath filepath = GridFilepath.extract(fullUrl);
         Objects.requireNonNull(filepath);
-        if (Utils.isNullOrEmpty(filepath.getFilename())) {// TODO drop tables
+        GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
+        if (Utils.isNullOrEmpty(filepath.getFilename())) {
+            fs.drop();
             return;
         }
-        GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
         GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
         if (first != null) {
             fs.delete(first.getObjectId());
@@ -101,7 +101,7 @@ public class MongodbFileSystem implements IFileSystem {
 
     @Override
     public void put(String fullUrl, InputStream buf) {
-        Filepath filepath = Filepath.extract(fullUrl);
+        GridFilepath filepath = GridFilepath.extract(fullUrl);
         Objects.requireNonNull(filepath);
         GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
         GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
@@ -113,7 +113,11 @@ public class MongodbFileSystem implements IFileSystem {
 
     @Override
     public void mkdir(String fullUrl) {
-
+        GridFilepath filepath = GridFilepath.extract(fullUrl);
+        Objects.requireNonNull(filepath);
+        if (Utils.isNullOrEmpty(filepath.getFilename())) {
+            db.createCollection(filepath.getBucket() + ".files");
+        }
     }
 
     public static FileNode toNode(String namespace, GridFSFile file) {

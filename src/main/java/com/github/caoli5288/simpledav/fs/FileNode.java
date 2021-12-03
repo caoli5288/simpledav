@@ -17,15 +17,18 @@ public class FileNode {
 
     @Override
     public String toString() {
-        if (type == FileType.DIR) {
-            return Constants.XML_MULTI_STATUS_DIR
-                    .replace("%path%", filename)
-                    .replace("%date%", Utils.asGmt(modified));
+        switch (type) {
+            case FILE:
+                return Constants.XML_MULTI_STATUS_FILE
+                        .replace("%path%", filename)
+                        .replace("%size%", String.valueOf(size))
+                        .replace("%date%", Utils.asGmt(modified));
+            case DIR:
+                return Constants.XML_MULTI_STATUS_DIR
+                        .replace("%path%", filename)
+                        .replace("%date%", Utils.asGmt(modified));
         }
-        return Constants.XML_MULTI_STATUS_FILE
-                .replace("%path%", filename)
-                .replace("%size%", String.valueOf(size))
-                .replace("%date%", Utils.asGmt(modified));
+        return null;
     }
 
     public static String toString(List<FileNode> nodes) {
