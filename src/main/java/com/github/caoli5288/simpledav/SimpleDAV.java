@@ -4,8 +4,10 @@ import com.github.caoli5288.simpledav.fs.FileNode;
 import com.github.caoli5288.simpledav.fs.IFileSystem;
 import com.github.caoli5288.simpledav.fs.mongodb.MongodbFileSystem;
 import io.javalin.Javalin;
+import io.javalin.core.JavalinConfig;
 import io.javalin.http.Context;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.FileReader;
@@ -14,7 +16,9 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.function.Consumer;
 
+@Slf4j
 public class SimpleDAV {
 
     private static IFileSystem fs;
@@ -22,13 +26,26 @@ public class SimpleDAV {
     @SneakyThrows
     public static void main(String[] args) {
         reloadConfig();
-        Javalin.create()
+        Javalin.create(configServlet())
                 .options("/*", s -> s.result("OK"))// Always ok
                 .get("/*", s -> cat(s.path(), s))
                 .put("/*", s -> put(s.path(), s))
                 .delete("/*", s -> del(s.path(), s))
                 .after("/*", s -> apply(s.method(), s))
-                .start(Constants.HTTP_PORT);
+                .start(Integer.getInteger("http.port", 8080));
+    }
+
+    private static Consumer<JavalinConfig> configServlet() {
+        return options -> {
+            log.info("Context path {}", options.contextPath);
+            options.requestLogger((context, mills) -> {
+                String method = context.method();
+                log.info("ip={} method={} url={} t={}", context.ip(), method, context.fullUrl(), mills);
+            });
+            String auth = System.getProperty("auth.basic", "");
+            if (!auth.isEmpty()) {
+            }
+        };
     }
 
     private static void put(String path, Context s) {
@@ -74,7 +91,8 @@ public class SimpleDAV {
         }
         Properties properties = new Properties();
         properties.load(new FileReader(file));
-        fs = new MongodbFileSystem(properties.getProperty("mongodb.url"), properties.getProperty("mongodb.db"));
+        properties.forEach(System.getProperties()::putIfAbsent);
+        fs = new MongodbFileSystem(System.getProperty("mongodb.url"), System.getProperty("mongodb.db"));
         fs.setup();
     }
 
@@ -83,7 +101,7 @@ public class SimpleDAV {
         List<FileNode> ls = fs.ls(path);
         if (ls == null) {
             ctx.status(404);
-        }else {
+        } else {
             ctx.status(207).result(Constants.XML_MULTI_STATUS
                     .replace("<!---->", FileNode.toString(ls)));
         }
