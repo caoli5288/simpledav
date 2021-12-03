@@ -6,8 +6,12 @@ import com.github.caoli5288.simpledav.fs.mongodb.MongodbFileSystem;
 import io.javalin.Javalin;
 import io.javalin.core.JavalinConfig;
 import io.javalin.http.Context;
+import io.javalin.http.HandlerType;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import java.io.File;
 import java.io.FileReader;
@@ -26,13 +30,17 @@ public class SimpleDAV {
     @SneakyThrows
     public static void main(String[] args) {
         reloadConfig();
-        Javalin.create(configServlet())
+        configServer(Javalin.create(configServlet()))
                 .options("/*", s -> s.result("OK"))// Always ok
                 .get("/*", s -> cat(s.path(), s))
                 .put("/*", s -> put(s.path(), s))
                 .delete("/*", s -> del(s.path(), s))
-                .after("/*", s -> apply(s.method(), s))
-                .start(Integer.getInteger("http.port", 8080));
+                .addHandler(HandlerType.INVALID, "/*", s -> apply(s.method(), s))
+                .start();
+    }
+
+    private static Javalin configServer(Javalin javalin) {
+        return javalin;
     }
 
     private static Consumer<JavalinConfig> configServlet() {
@@ -42,9 +50,25 @@ public class SimpleDAV {
                 String method = context.method();
                 log.info("ip={} method={} url={} t={}", context.ip(), method, context.fullUrl(), mills);
             });
-            String auth = System.getProperty("auth.basic", "");
-            if (!auth.isEmpty()) {
-            }
+            options.server(() -> {
+                Server server = new Server();
+                Utils.let(System.getProperty("http.host"), it -> {
+                    ServerConnector connector = new ServerConnector(server);
+                    connector.setHost(it);
+                    connector.setPort(Integer.getInteger("http.port", 8080));
+                    server.addConnector(connector);
+                });
+                Utils.let(System.getProperty("https.host"), it -> {
+                    SslContextFactory sslCtx = new SslContextFactory();
+                    sslCtx.setKeyStorePath(Utils.asUrl(System.getProperty("https.jks")).toExternalForm());
+                    Utils.let(System.getProperty("https.jks.password"), sslCtx::setKeyStorePassword);
+                    ServerConnector connector = new ServerConnector(server, sslCtx);
+                    connector.setHost(System.getProperty("https.host"));
+                    connector.setPort(Integer.getInteger("https.port", 4433));
+                    server.addConnector(connector);
+                });
+                return server;
+            });
         };
     }
 
@@ -63,7 +87,7 @@ public class SimpleDAV {
             case "PROPFIND":
                 find(context);
                 break;
-            case "PROPPATCH": // Not supported
+            case "PROPPATCH": // Simply ret OK currently
                 context.status(200).result("");
                 break;
             case "MKCOL":

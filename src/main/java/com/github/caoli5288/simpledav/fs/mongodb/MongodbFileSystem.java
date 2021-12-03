@@ -1,5 +1,6 @@
 package com.github.caoli5288.simpledav.fs.mongodb;
 
+import com.github.caoli5288.simpledav.Utils;
 import com.github.caoli5288.simpledav.fs.FileNode;
 import com.github.caoli5288.simpledav.fs.FileType;
 import com.github.caoli5288.simpledav.fs.IFileSystem;
@@ -88,6 +89,9 @@ public class MongodbFileSystem implements IFileSystem {
     public void rm(String fullUrl) {
         Filepath filepath = Filepath.extract(fullUrl);
         Objects.requireNonNull(filepath);
+        if (Utils.isNullOrEmpty(filepath.getFilename())) {// TODO drop tables
+            return;
+        }
         GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
         GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
         if (first != null) {
