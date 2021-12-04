@@ -15,7 +15,9 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +34,7 @@ public class SimpleDAV {
         reloadConfig();
         configServer(Javalin.create(configServlet()))
                 .options("/*", s -> s.result("OK"))// Always ok
-                .get("/*", s -> cat(s.path(), s))
+                .get("/*", s -> s.result(fs.cat(s.path())))
                 .put("/*", s -> put(s.path(), s))
                 .delete("/*", s -> del(s.path(), s))
                 .addHandler(HandlerType.INVALID, "/*", s -> apply(s.method(), s))
@@ -40,7 +42,11 @@ public class SimpleDAV {
     }
 
     private static Javalin configServer(Javalin javalin) {
-        Utils.let(System.getProperty("auth.basic"), s -> javalin.before(BasicAccessor.extract(s)));
+        Utils.let(System.getProperty("auth.basic"), s -> {
+            BasicAccessor accessor = BasicAccessor.extract(s);
+            javalin.before(accessor);
+            log.info("{} initialized", accessor.getCredentials());
+        });
         return javalin;
     }
 
@@ -49,7 +55,7 @@ public class SimpleDAV {
             log.info("Context path {}", options.contextPath);
             options.requestLogger((context, mills) -> {
                 String method = context.method();
-                log.info("ip={} method={} url={} t={}", context.ip(), method, context.fullUrl(), mills);
+                log.info("ip={} ops={},{} t={}", context.ip(), method, context.fullUrl(), mills);
             });
             options.server(() -> {
                 Server server = new Server();
@@ -83,7 +89,7 @@ public class SimpleDAV {
         s.status(204);
     }
 
-    private static void apply(String method, Context context) {
+    private static void apply(String method, Context context) throws IOException {
         if (context.status() != 200) {
             return;
         }
@@ -91,23 +97,23 @@ public class SimpleDAV {
             case "PROPFIND":
                 find(context);
                 break;
-            case "PROPPATCH": // Simply ret OK currently
-                context.status(200).result("");
+            case "PROPPATCH": // TODO ret OK currently
                 break;
             case "MKCOL":
                 fs.mkdir(context.path());
-                context.status(200).result("");
+                break;
+            case "MOVE":
+                move(context);
                 break;
         }
     }
 
-    private static void cat(String path, Context context) {
-        InputStream stream = fs.cat(path);
-        if (stream == null) {
-            context.status(404);
-        } else {
-            context.result(stream);
-        }
+    private static void move(Context context) throws IOException {
+        String s = context.header("Destination");
+        Objects.requireNonNull(s, "Destination not defined");
+        String des = URI.create(s).getPath();
+        boolean force = "F".equals(context.header("Overwrite"));
+        fs.mv(context.path(), des, force);
     }
 
     @SneakyThrows
@@ -124,14 +130,10 @@ public class SimpleDAV {
         fs.setup();
     }
 
-    private static void find(Context ctx) {
+    private static void find(Context ctx) throws IOException {
         String path = ctx.path();
         List<FileNode> ls = fs.ls(path);
-        if (ls == null) {
-            ctx.status(404);
-        } else {
-            ctx.status(207).result(Constants.XML_MULTI_STATUS
-                    .replace("<!---->", FileNode.toString(ls)));
-        }
+        ctx.status(207).result(Constants.XML_MULTI_STATUS
+                .replace("<!---->", FileNode.toString(ls)));
     }
 }

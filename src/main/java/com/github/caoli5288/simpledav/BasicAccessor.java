@@ -3,12 +3,14 @@ package com.github.caoli5288.simpledav;
 import io.javalin.core.security.BasicAuthCredentials;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 @RequiredArgsConstructor
 public class BasicAccessor implements Handler {
 
+    @Getter
     private final BasicAuthCredentials credentials;
 
     @Override

@@ -4,6 +4,7 @@ import com.github.caoli5288.simpledav.Utils;
 import com.github.caoli5288.simpledav.fs.FileNode;
 import com.github.caoli5288.simpledav.fs.FileType;
 import com.github.caoli5288.simpledav.fs.IFileSystem;
+import com.mongodb.assertions.Assertions;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -13,8 +14,11 @@ import com.mongodb.client.gridfs.GridFSFindIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.model.Filters;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,10 +43,9 @@ public class GridFileSystem implements IFileSystem {
     }
 
     @Override
-    @Nullable
-    public List<FileNode> ls(String fullUrl) {
+    public List<FileNode> ls(String path) throws IOException {
         // top levels
-        if (fullUrl.equals("/")) {
+        if (path.equals("/")) {
             List<FileNode> nodes = new ArrayList<>();
             for (String s : db.listCollectionNames()) {
                 if (s.endsWith(".files")) {
@@ -52,10 +55,10 @@ public class GridFileSystem implements IFileSystem {
             return nodes;
         }
         // others
-        GridFilepath filepath = GridFilepath.extract(fullUrl);
+        GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
-        GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
-        if (fullUrl.endsWith("/")) {
+        GridFSBucket fs = asGrid(filepath.getBucket());
+        if (path.endsWith("/")) {
             GridFSFindIterable files = fs.find(Filters.regex("filename", filepath.getFilename() + "[^/]+"));
             List<FileNode> list = new ArrayList<>();
             for (GridFSFile file : files) {
@@ -65,45 +68,44 @@ public class GridFileSystem implements IFileSystem {
         } else {
             GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
             if (first == null) {
-                return null;
+                throw new FileNotFoundException();
             }
             return Collections.singletonList(toNode(filepath.getBucket(), first));
         }
     }
 
     @Override
-    @Nullable
-    public InputStream cat(String fullUrl) {
-        GridFilepath filepath = GridFilepath.extract(fullUrl);
+    public InputStream cat(String path) throws IOException {
+        GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
-        GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
-        GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
-        if (first == null) {
-            return null;
+        GridFSBucket fs = asGrid(filepath.getBucket());
+        GridFSFile obj = fs.find(Filters.eq("filename", filepath.getFilename())).first();
+        if (obj == null) {
+            throw new FileNotFoundException();
         }
-        return fs.openDownloadStream(first.getFilename());
+        return fs.openDownloadStream(obj.getFilename());
     }
 
     @Override
-    public void rm(String fullUrl) {
-        GridFilepath filepath = GridFilepath.extract(fullUrl);
+    public void rm(String path) {
+        GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
-        GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
+        GridFSBucket fs = asGrid(filepath.getBucket());
         if (Utils.isNullOrEmpty(filepath.getFilename())) {
             fs.drop();
             return;
         }
         GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
-        if (first != null) {
+        if (first != null) {//Silent
             fs.delete(first.getObjectId());
         }
     }
 
     @Override
-    public void put(String fullUrl, InputStream buf) {
-        GridFilepath filepath = GridFilepath.extract(fullUrl);
+    public void put(String path, InputStream buf) {
+        GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
-        GridFSBucket fs = buckets.computeIfAbsent(filepath.getBucket(), s -> GridFSBuckets.create(db, s));
+        GridFSBucket fs = asGrid(filepath.getBucket());
         GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
         if (first != null) {
             fs.delete(first.getObjectId());
@@ -112,12 +114,40 @@ public class GridFileSystem implements IFileSystem {
     }
 
     @Override
-    public void mkdir(String fullUrl) {
-        GridFilepath filepath = GridFilepath.extract(fullUrl);
+    public void mkdir(String path) {
+        GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
         if (Utils.isNullOrEmpty(filepath.getFilename())) {
             db.createCollection(filepath.getBucket() + ".files");
         }
+    }
+
+    @Override
+    public void mv(String source, String des, boolean force) throws IOException {
+        GridFilepath fpSrc = GridFilepath.extract(source);
+        Objects.requireNonNull(fpSrc);
+        // check buckets
+        GridFilepath fp2 = GridFilepath.extract(des);
+        Objects.requireNonNull(fp2);
+        Assertions.isTrue("Cross buckets", fpSrc.getBucket().equals(fp2.getBucket()));
+        // check src exists
+        GridFSBucket fs = asGrid(fpSrc.getBucket());
+        GridFSFile objSrc = fs.find(Filters.eq("filename", fpSrc.getFilename())).first();
+        if (objSrc == null) {
+            throw new FileNotFoundException();
+        }
+        // check des file
+        GridFSFile obj2 = fs.find(Filters.eq("filename", fp2.getFilename())).first();
+        if (obj2 != null) {
+            Assertions.isTrue("Overwrite", force);
+            fs.delete(obj2.getObjectId());// So delete old first
+        }
+        fs.rename(objSrc.getObjectId(), fp2.getFilename());
+    }
+
+    @NotNull
+    private GridFSBucket asGrid(String name) {
+        return buckets.computeIfAbsent(name, s -> GridFSBuckets.create(db, s));
     }
 
     public static FileNode toNode(String namespace, GridFSFile file) {
