@@ -120,6 +120,13 @@ public class SimpleDAV {
 
     @SneakyThrows
     private static void reloadConfig() {
+        // env
+        envMap("AUTH_BASIC", "auth.basic");
+        envMap("MONGODB_URL", "mongodb.url");
+        envMap("MONGODB_DB", "mongodb.db");
+        envMap("HTTP_HOST", "http.host");
+        envMap("HTTP_PORT", "http.port");
+        // props
         File file = new File("server.properties");
         if (!file.exists()) {
             InputStream in = SimpleDAV.class.getClassLoader().getResourceAsStream("server.properties");
@@ -137,5 +144,9 @@ public class SimpleDAV {
         List<FileNode> ls = fs.ls(path);
         ctx.status(207).result(Constants.XML_MULTI_STATUS
                 .format(Utils.concat(FileNode.toString(ls))));
+    }
+
+    static void envMap(String env, String props) {
+        Utils.let(System.getenv(env), s -> System.setProperty(props, s));
     }
 }
