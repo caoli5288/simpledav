@@ -28,6 +28,10 @@ public class Utils {
         consumer.accept(s);
     }
 
+    public static Object concat(Object... objects) {
+        return objects;
+    }
+
     @SneakyThrows
     public static URL asUrl(String s) {
         return new File(s).toURI().toURL();

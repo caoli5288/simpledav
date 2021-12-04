@@ -2,17 +2,16 @@ package com.github.caoli5288.simpledav;
 
 import kotlin.io.ByteStreamsKt;
 
-import java.io.InputStream;
+import java.text.MessageFormat;
 import java.util.Objects;
 
 public class Constants {
 
-    public static final String XML_MULTI_STATUS = readResource("multistatus.xml");
-    public static final String XML_MULTI_STATUS_FILE = readResource("multistatus-file.xml");
-    public static final String XML_MULTI_STATUS_DIR = readResource("multistatus-dir.xml");
+    public static final MessageFormat XML_MULTI_STATUS = new MessageFormat(readResource("multistatus.xml"));
+    public static final MessageFormat XML_MULTI_STATUS_FILE = new MessageFormat(readResource("multistatus-file.xml"));
+    public static final MessageFormat XML_MULTI_STATUS_DIR = new MessageFormat(readResource("multistatus-dir.xml"));
 
     private static String readResource(String s) {
-        InputStream stream = Constants.class.getClassLoader().getResourceAsStream(s);
-        return new String(ByteStreamsKt.readBytes(Objects.requireNonNull(stream)));
+        return new String(ByteStreamsKt.readBytes(Objects.requireNonNull(Constants.class.getClassLoader().getResourceAsStream(s))));
     }
 }

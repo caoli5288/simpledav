@@ -1,11 +1,11 @@
 <D:response xmlns:lp1="DAV:">
-    <D:href>%path%</D:href>
+    <D:href>{0}</D:href>
     <D:propstat>
         <D:prop>
             <lp1:resourcetype>
                 <D:collection />
             </lp1:resourcetype>
-            <lp1:getlastmodified>Fri, 03 Dec 2021 02:45:32 GMT</lp1:getlastmodified>
+            <lp1:getlastmodified>{1}</lp1:getlastmodified>
             <D:getcontenttype>httpd/unix-directory</D:getcontenttype>
         </D:prop>
         <D:status>HTTP/1.1 200 OK</D:status>

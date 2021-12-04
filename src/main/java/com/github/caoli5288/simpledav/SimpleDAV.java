@@ -14,6 +14,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +39,7 @@ public class SimpleDAV {
                 .put("/*", s -> put(s.path(), s))
                 .delete("/*", s -> del(s.path(), s))
                 .addHandler(HandlerType.INVALID, "/*", s -> apply(s.method(), s))
+                .exception(FileNotFoundException.class, (e, context) -> context.status(404).result(e.toString()))
                 .start();
     }
 
@@ -134,6 +136,6 @@ public class SimpleDAV {
         String path = ctx.path();
         List<FileNode> ls = fs.ls(path);
         ctx.status(207).result(Constants.XML_MULTI_STATUS
-                .replace("<!---->", FileNode.toString(ls)));
+                .format(Utils.concat(FileNode.toString(ls))));
     }
 }
