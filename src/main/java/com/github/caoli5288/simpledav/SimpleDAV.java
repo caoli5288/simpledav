@@ -12,6 +12,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.util.UrlEncoded;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import java.io.File;
@@ -36,9 +37,9 @@ public class SimpleDAV {
         reloadConfig();
         configServer(Javalin.create(configServlet()))
                 .options("/*", s -> s.status(200))// Always ok
-                .get("/*", s -> s.result(fs.cat(s.path())))
-                .put("/*", s -> put(s.path(), s))
-                .delete("/*", s -> del(s.path(), s))
+                .get("/*", s -> s.result(fs.cat(UrlEncoded.decodeString(s.path()))))
+                .put("/*", s -> put(UrlEncoded.decodeString(s.path()), s))
+                .delete("/*", s -> del(UrlEncoded.decodeString(s.path()), s))
                 .addHandler(HandlerType.INVALID, "/*", s -> apply(s.method(), s))
                 .exception(FileNotFoundException.class, (e, context) -> context.status(404).result(e.toString()))
                 .exception(UnauthorizedResponse.class, (e, context) -> context.status(401).header("WWW-Authenticate", "Basic realm=WebDAV"))
@@ -101,7 +102,7 @@ public class SimpleDAV {
             case "PROPPATCH": // TODO ret OK currently
                 break;
             case "MKCOL":
-                fs.mkdir(context.path());
+                fs.mkdir(UrlEncoded.decodeString(context.path()));
                 break;
             case "MOVE":
                 move(context);
@@ -112,9 +113,9 @@ public class SimpleDAV {
     private static void move(Context context) throws IOException {
         String s = context.header("Destination");
         Objects.requireNonNull(s, "Destination not defined");
-        String des = URI.create(s).getPath();
+        String des = URI.create(s).getPath();// URI context decided unicode chars
         boolean force = "F".equalsIgnoreCase(context.header("Overwrite"));
-        fs.mv(context.path(), des, force);
+        fs.mv(UrlEncoded.decodeString(context.path()), des, force);
     }
 
     @SneakyThrows
@@ -139,7 +140,7 @@ public class SimpleDAV {
     }
 
     private static void find(Context ctx) throws IOException {
-        String path = ctx.path();
+        String path = UrlEncoded.decodeString(ctx.path());
         List<FileNode> ls = fs.ls(path, "1".equalsIgnoreCase(ctx.header("Depth")));
         ctx.status(207).result(Constants.XML_MULTI_STATUS
                 .format(Utils.concat(FileNode.toString(ls))));
