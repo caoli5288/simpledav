@@ -2,20 +2,20 @@ package com.github.caoli5288.simpledav.fs;
 
 import com.github.caoli5288.simpledav.Constants;
 import com.github.caoli5288.simpledav.Utils;
-import lombok.Value;
+import lombok.SneakyThrows;
 
 import java.util.Date;
 import java.util.List;
 
-@Value
 public class FileNode {
 
-    String filename;
-    long size;
-    Date modified;
-    FileType type;
+    private String filename;
+    private long size;
+    private Date modified;
+    private FileType type;
 
     @Override
+    @SneakyThrows
     public String toString() {
         switch (type) {
             case FILE:
@@ -27,6 +27,27 @@ public class FileNode {
                         Utils.asGmt(modified)));
         }
         return null;
+    }
+
+    public FileNode filename(String filename) {
+        this.filename = filename;
+        return this;
+    }
+
+    public FileNode size(long size) {
+        this.size = size;
+        return this;
+    }
+
+    public FileNode modified(Date modified) {
+        this.modified = modified;
+        return this;
+    }
+
+    public static FileNode of(FileType type) {
+        FileNode node = new FileNode();
+        node.type = type;
+        return node;
     }
 
     public static String toString(List<FileNode> nodes) {

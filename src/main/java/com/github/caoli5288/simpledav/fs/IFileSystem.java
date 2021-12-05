@@ -8,7 +8,7 @@ public interface IFileSystem {
 
     void setup();
 
-    List<FileNode> ls(String path) throws IOException;
+    List<FileNode> ls(String path, boolean lookup) throws IOException;
 
     InputStream cat(String path) throws IOException;
 

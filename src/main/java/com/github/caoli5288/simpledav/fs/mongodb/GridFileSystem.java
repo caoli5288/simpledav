@@ -1,5 +1,6 @@
 package com.github.caoli5288.simpledav.fs.mongodb;
 
+import com.github.caoli5288.simpledav.Constants;
 import com.github.caoli5288.simpledav.Utils;
 import com.github.caoli5288.simpledav.fs.FileNode;
 import com.github.caoli5288.simpledav.fs.FileType;
@@ -15,14 +16,12 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 import com.mongodb.client.model.Filters;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,16 +42,10 @@ public class GridFileSystem implements IFileSystem {
     }
 
     @Override
-    public List<FileNode> ls(String path) throws IOException {
+    public List<FileNode> ls(String path, boolean lookup) throws IOException {
         // top levels
         if (path.equals("/")) {
-            List<FileNode> nodes = new ArrayList<>();
-            for (String s : db.listCollectionNames()) {
-                if (s.endsWith(".files")) {
-                    nodes.add(new FileNode("/" + s.substring(0, s.length() - 6), 0, new Date(), FileType.DIR));
-                }
-            }
-            return nodes;
+            return ls();
         }
         // others
         GridFilepath filepath = GridFilepath.extract(path);
@@ -61,8 +54,13 @@ public class GridFileSystem implements IFileSystem {
         if (path.endsWith("/")) {
             GridFSFindIterable files = fs.find(Filters.regex("filename", filepath.getFilename() + "[^/]+"));
             List<FileNode> list = new ArrayList<>();
-            for (GridFSFile file : files) {
-                list.add(toNode(filepath.getBucket(), file));
+            list.add(FileNode.of(FileType.DIR)
+                    .filename(path)
+                    .modified(Constants.EMPTY_DATE));
+            if (lookup) {
+                for (GridFSFile file : files) {
+                    list.add(toNode(filepath.getBucket(), file));
+                }
             }
             return list;
         } else {
@@ -72,6 +70,21 @@ public class GridFileSystem implements IFileSystem {
             }
             return Collections.singletonList(toNode(filepath.getBucket(), first));
         }
+    }
+
+    private List<FileNode> ls() {
+        List<FileNode> nodes = new ArrayList<>();
+        nodes.add(FileNode.of(FileType.DIR)
+                .filename("/")
+                .modified(Constants.EMPTY_DATE));
+        for (String s : db.listCollectionNames()) {
+            if (s.endsWith(".files")) {
+                nodes.add(FileNode.of(FileType.DIR)
+                        .filename("/" + s.substring(0, s.length() - 6) + "/")
+                        .modified(Constants.EMPTY_DATE));
+            }
+        }
+        return nodes;
     }
 
     @Override
@@ -150,7 +163,10 @@ public class GridFileSystem implements IFileSystem {
         return buckets.computeIfAbsent(name, s -> GridFSBuckets.create(db, s));
     }
 
-    public static FileNode toNode(String namespace, GridFSFile file) {
-        return new FileNode(String.format("/%s/%s", namespace, file.getFilename()), file.getLength(), file.getUploadDate(), FileType.FILE);
+    public static FileNode toNode(String bucket, GridFSFile file) {
+        return FileNode.of(FileType.FILE)
+                .filename("/" + bucket + "/" + file.getFilename())
+                .size(file.getLength())
+                .modified(file.getUploadDate());
     }
 }

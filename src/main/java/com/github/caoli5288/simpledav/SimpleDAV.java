@@ -7,6 +7,7 @@ import io.javalin.Javalin;
 import io.javalin.core.JavalinConfig;
 import io.javalin.http.Context;
 import io.javalin.http.HandlerType;
+import io.javalin.http.UnauthorizedResponse;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.server.Server;
@@ -34,12 +35,13 @@ public class SimpleDAV {
     public static void main(String[] args) {
         reloadConfig();
         configServer(Javalin.create(configServlet()))
-                .options("/*", s -> s.result("OK"))// Always ok
+                .options("/*", s -> s.status(200))// Always ok
                 .get("/*", s -> s.result(fs.cat(s.path())))
                 .put("/*", s -> put(s.path(), s))
                 .delete("/*", s -> del(s.path(), s))
                 .addHandler(HandlerType.INVALID, "/*", s -> apply(s.method(), s))
                 .exception(FileNotFoundException.class, (e, context) -> context.status(404).result(e.toString()))
+                .exception(UnauthorizedResponse.class, (e, context) -> context.status(401).header("WWW-Authenticate", "Basic realm=WebDAV"))
                 .start();
     }
 
@@ -92,9 +94,6 @@ public class SimpleDAV {
     }
 
     private static void apply(String method, Context context) throws IOException {
-        if (context.status() != 200) {
-            return;
-        }
         switch (method) {
             case "PROPFIND":
                 find(context);
@@ -114,7 +113,7 @@ public class SimpleDAV {
         String s = context.header("Destination");
         Objects.requireNonNull(s, "Destination not defined");
         String des = URI.create(s).getPath();
-        boolean force = "F".equals(context.header("Overwrite"));
+        boolean force = "F".equalsIgnoreCase(context.header("Overwrite"));
         fs.mv(context.path(), des, force);
     }
 
@@ -141,7 +140,7 @@ public class SimpleDAV {
 
     private static void find(Context ctx) throws IOException {
         String path = ctx.path();
-        List<FileNode> ls = fs.ls(path);
+        List<FileNode> ls = fs.ls(path, "1".equalsIgnoreCase(ctx.header("Depth")));
         ctx.status(207).result(Constants.XML_MULTI_STATUS
                 .format(Utils.concat(FileNode.toString(ls))));
     }

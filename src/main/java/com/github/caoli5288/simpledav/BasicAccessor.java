@@ -3,6 +3,7 @@ package com.github.caoli5288.simpledav;
 import io.javalin.core.security.BasicAuthCredentials;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import io.javalin.http.UnauthorizedResponse;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +22,7 @@ public class BasicAccessor implements Handler {
                 return;
             }
         }
-        context.status(401).header("WWW-Authenticate", "Basic realm=WebDAV").result("");
+        throw new UnauthorizedResponse();
     }
 
     public static BasicAccessor extract(String s) {
