@@ -41,8 +41,9 @@ public class SimpleDAV {
                 .put("/*", s -> put(UrlEncoded.decodeString(s.path()), s))
                 .delete("/*", s -> del(UrlEncoded.decodeString(s.path()), s))
                 .addHandler(HandlerType.INVALID, "/*", s -> apply(s.method(), s))
-                .exception(FileNotFoundException.class, (e, context) -> context.status(404).result(e.toString()))
+                .exception(FileNotFoundException.class, (e, context) -> context.status(404))
                 .exception(UnauthorizedResponse.class, (e, context) -> context.status(401).header("WWW-Authenticate", "Basic realm=WebDAV"))
+                .exception(NullPointerException.class, (e, context) -> context.status(500))
                 .start();
     }
 
