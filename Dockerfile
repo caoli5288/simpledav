@@ -8,7 +8,7 @@ RUN mvn package
 
 FROM openjdk:16-slim
 
-COPY --from build /build/target/simpledav.jar /app/
+COPY --from=build /build/target/simpledav.jar /app/
 
 VOLUME ["/app/data"]
 
