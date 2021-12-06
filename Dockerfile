@@ -6,7 +6,7 @@ WORKDIR /build
 
 RUN mvn package
 
-FROM openjdk:16-slim
+FROM openjdk:17-slim
 
 COPY --from=build /build/target/simpledav.jar /app/
 

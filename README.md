@@ -19,8 +19,22 @@ $ java -jar target/simpledav.jar
 
 ### Docker Compose
 
-```
-# docker-compose up
+```yaml
+version: '3.4'
+
+services:
+  simpledav:
+    image: ghcr.io/caoli5288/simpledav:latest
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx1G"
+      AUTH_BASIC: "user:pass"
+      HTTP_HOST: "0.0.0.0"
+      HTTP_PORT: "8080"
+      MONGODB_URL: "mongodb://example.com"
+      MONGODB_DB: "files"
 ```
 
 ## Configurations

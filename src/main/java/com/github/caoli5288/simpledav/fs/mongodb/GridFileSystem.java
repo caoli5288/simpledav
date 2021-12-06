@@ -5,6 +5,7 @@ import com.github.caoli5288.simpledav.Utils;
 import com.github.caoli5288.simpledav.fs.FileNode;
 import com.github.caoli5288.simpledav.fs.FileType;
 import com.github.caoli5288.simpledav.fs.IFileSystem;
+import com.mongodb.BasicDBObject;
 import com.mongodb.assertions.Assertions;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -39,6 +40,7 @@ public class GridFileSystem implements IFileSystem {
     public void setup() {
         MongoClient mongoClient = MongoClients.create(url);
         db = mongoClient.getDatabase(dbName);
+        db.runCommand(new BasicDBObject("ping", 1));// fast fail if exceptions
     }
 
     @Override
