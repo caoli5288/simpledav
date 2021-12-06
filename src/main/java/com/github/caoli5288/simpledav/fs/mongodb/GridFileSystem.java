@@ -115,23 +115,27 @@ public class GridFileSystem implements IFileSystem {
     }
 
     @Override
-    public void put(String path, InputStream buf) {
+    public void put(String path, InputStream buf) throws IOException {
         GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
+        String filename = filepath.getFilename();
+        Utils.checkFilename(filename);
         GridFSBucket fs = asGrid(filepath.getBucket());
-        GridFSFile first = fs.find(Filters.eq("filename", filepath.getFilename())).first();
+        GridFSFile first = fs.find(Filters.eq("filename", filename)).first();
         if (first != null) {
             fs.delete(first.getObjectId());
         }
-        fs.uploadFromStream(filepath.getFilename(), buf);
+        fs.uploadFromStream(filename, buf);
     }
 
     @Override
-    public void mkdir(String path) {
+    public void mkdir(String path) throws IOException {
         GridFilepath filepath = GridFilepath.extract(path);
         Objects.requireNonNull(filepath);
         if (Utils.isNullOrEmpty(filepath.getFilename())) {
-            db.createCollection(filepath.getBucket() + ".files");
+            String colName = filepath.getBucket();
+            Utils.checkFilename(colName);
+            db.createCollection(colName + ".files");
         }
     }
 
@@ -143,6 +147,8 @@ public class GridFileSystem implements IFileSystem {
         GridFilepath fp2 = GridFilepath.extract(des);
         Objects.requireNonNull(fp2);
         Assertions.isTrue("Cross buckets", fpSrc.getBucket().equals(fp2.getBucket()));
+        String filename2 = fp2.getFilename();
+        Utils.checkFilename(filename2);
         // check src exists
         GridFSBucket fs = asGrid(fpSrc.getBucket());
         GridFSFile objSrc = fs.find(Filters.eq("filename", fpSrc.getFilename())).first();
@@ -150,12 +156,12 @@ public class GridFileSystem implements IFileSystem {
             throw new FileNotFoundException();
         }
         // check des file
-        GridFSFile obj2 = fs.find(Filters.eq("filename", fp2.getFilename())).first();
+        GridFSFile obj2 = fs.find(Filters.eq("filename", filename2)).first();
         if (obj2 != null) {
             Assertions.isTrue("Overwrite", force);
             fs.delete(obj2.getObjectId());// So delete old first
         }
-        fs.rename(objSrc.getObjectId(), fp2.getFilename());
+        fs.rename(objSrc.getObjectId(), filename2);
     }
 
     @NotNull

@@ -2,6 +2,7 @@ package com.github.caoli5288.simpledav;
 
 import sun.nio.cs.ThreadLocalCoders;
 
+import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -18,6 +19,7 @@ public class Utils {
 
     private static final SimpleDateFormat GMT_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
     private static final Pattern SPACE = Pattern.compile(" ");
+    private static final Pattern ILLEGAL_FILENAME_PATTERN = Pattern.compile("[\\\\/:?\"<>|]");
 
     public static String asGmt(Date date) {
         return GMT_DATE_FORMAT.format(date) + " GMT";
@@ -92,5 +94,11 @@ public class Utils {
         sb.append('%');
         sb.append(HEX_DIGITS[(b >> 4) & 0x0f]);
         sb.append(HEX_DIGITS[(b) & 0x0f]);
+    }
+
+    public static void checkFilename(String f) throws FileNotFoundException {
+        if (ILLEGAL_FILENAME_PATTERN.matcher(f).find()) {
+            throw new FileNotFoundException();
+        }
     }
 }

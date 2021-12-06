@@ -14,9 +14,9 @@ public interface IFileSystem {
 
     void rm(String path);
 
-    void put(String path, InputStream buf);
+    void put(String path, InputStream buf) throws IOException;
 
-    void mkdir(String path);
+    void mkdir(String path) throws IOException;
 
     void mv(String source, String des, boolean force) throws IOException;
 }

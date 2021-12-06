@@ -64,7 +64,7 @@ public class SimpleDAV {
         };
     }
 
-    private static void put(String path, Context s) {
+    private static void put(String path, Context s) throws IOException {
         fs.put(path, s.bodyAsInputStream());
         s.status(204);
     }
