@@ -10,10 +10,7 @@ import io.javalin.http.HandlerType;
 import io.javalin.http.UnauthorizedResponse;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.UrlEncoded;
-import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -44,7 +41,7 @@ public class SimpleDAV {
                 .exception(FileNotFoundException.class, (e, context) -> context.status(404))
                 .exception(UnauthorizedResponse.class, (e, context) -> context.status(401).header("WWW-Authenticate", "Basic realm=WebDAV"))
                 .exception(NullPointerException.class, (e, context) -> context.status(500))
-                .start();
+                .start(System.getProperty("http.host", "0.0.0.0"), Integer.getInteger("http.port"));
     }
 
     private static Javalin configServer(Javalin javalin) {
@@ -59,28 +56,10 @@ public class SimpleDAV {
     private static Consumer<JavalinConfig> configServlet() {
         return options -> {
             log.info("Context path {}", options.contextPath);
+            options.showJavalinBanner = false;
             options.requestLogger((context, mills) -> {
                 String method = context.method();
                 log.info("ip={} ops={},{} t={}", context.ip(), method, context.fullUrl(), mills);
-            });
-            options.server(() -> {
-                Server server = new Server();
-                Utils.let(System.getProperty("http.host"), it -> {
-                    ServerConnector connector = new ServerConnector(server);
-                    connector.setHost(it);
-                    connector.setPort(Integer.getInteger("http.port", 8080));
-                    server.addConnector(connector);
-                });
-                Utils.let(System.getProperty("https.host"), it -> {
-                    SslContextFactory sslCtx = new SslContextFactory();
-                    sslCtx.setKeyStorePath(Utils.asUrl(System.getProperty("https.jks")).toExternalForm());
-                    Utils.let(System.getProperty("https.jks.password"), sslCtx::setKeyStorePassword);
-                    ServerConnector connector = new ServerConnector(server, sslCtx);
-                    connector.setHost(System.getProperty("https.host"));
-                    connector.setPort(Integer.getInteger("https.port", 4433));
-                    server.addConnector(connector);
-                });
-                return server;
             });
         };
     }

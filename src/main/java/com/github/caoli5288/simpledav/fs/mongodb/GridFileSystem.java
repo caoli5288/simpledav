@@ -80,7 +80,7 @@ public class GridFileSystem implements IFileSystem {
         for (String s : db.listCollectionNames()) {
             if (s.endsWith(".files")) {
                 nodes.add(FileNode.of(FileType.DIR)
-                        .filename("/" + s.substring(0, s.length() - 6) + "/")
+                        .filename("/" + s.substring(0, s.length() - 6))
                         .modified(Constants.EMPTY_DATE));
             }
         }

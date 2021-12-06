@@ -14,7 +14,7 @@ VOLUME ["/app/data"]
 
 EXPOSE 8080/tcp
 
-ENV JAVA_TOOL_OPTIONS="-Xmx1G"
+ENV JAVA_TOOL_OPTIONS="-Xmx1G" AUTH_BASIC="user:password" HTTP_HOST="0.0.0.0" HTTP_PORT="8080" MONGODB_URL="mongodb://127.0.0.1" MONGODB_DB="files"
 
 WORKDIR /app/data
 

@@ -19,11 +19,11 @@ public class FileNode {
     public String toString() {
         switch (type) {
             case FILE:
-                return Constants.XML_MULTI_STATUS_FILE.format(Utils.concat(filename,
+                return Constants.XML_MULTI_STATUS_FILE.format(Utils.concat(Utils.encodeUrl(filename),
                         String.valueOf(size),
                         Utils.asGmt(modified)));
             case DIR:
-                return Constants.XML_MULTI_STATUS_DIR.format(Utils.concat(filename,
+                return Constants.XML_MULTI_STATUS_DIR.format(Utils.concat(Utils.encodeUrl(filename) + "/",// split strip the end '/' so we needs to append one
                         Utils.asGmt(modified)));
         }
         return null;
