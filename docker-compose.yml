@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3.4'
 
 services:
   mongo:
@@ -8,6 +8,7 @@ services:
   simpledav:
     build:
       context: .
+      network: host
     restart: unless-stopped
     ports:
       - '8080:8080'
@@ -16,5 +17,5 @@ services:
       AUTH_BASIC: "user:password"
       HTTP_HOST: "0.0.0.0"
       HTTP_PORT: "8080"
-      MONGODB_URL: "mongodb://127.0.0.1"
+      MONGODB_URL: "mongodb://mongo"
       MONGODB_DB: "files"
