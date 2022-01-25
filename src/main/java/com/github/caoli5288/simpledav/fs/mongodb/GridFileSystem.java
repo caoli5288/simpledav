@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
@@ -59,9 +61,23 @@ public class GridFileSystem implements IFileSystem {
                     .filename(path)
                     .modified(Constants.EMPTY_DATE));
             if (lookup) {
-                GridFSFindIterable files = fs.find(Filters.regex("filename", "^" + filepath.getFilename() + "[^/]+$"));
+                // TODO performance issues?
+                GridFSFindIterable files = fs.find(Filters.regex("filename", "^" + filepath.getFilename()));
+                int fnSize = filepath.getFilename().length();
+                Set<String> dirs = new HashSet<>();
                 for (GridFSFile file : files) {
-                    list.add(toNode(filepath.getBucket(), file));
+                    String f = file.getFilename().substring(fnSize);
+                    int cursor = f.indexOf('/');
+                    if (cursor == -1) {
+                        list.add(toNode(filepath.getBucket(), file));
+                    } else {
+                        dirs.add(filepath.getFilename() + f.substring(0, cursor) + "/");
+                    }
+                }
+                for (String fn : dirs) {
+                    list.add(FileNode.of(FileType.DIR)
+                            .filename(fn)
+                            .modified(Constants.EMPTY_DATE));
                 }
             }
             return list;
