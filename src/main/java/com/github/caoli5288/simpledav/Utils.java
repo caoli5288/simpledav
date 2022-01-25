@@ -19,7 +19,7 @@ public class Utils {
 
     private static final SimpleDateFormat GMT_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
     private static final Pattern SPACE = Pattern.compile(" ");
-    private static final Pattern ILLEGAL_FILENAME_PATTERN = Pattern.compile("[\\\\/:?\"<>|]");
+    private static final Pattern ILLEGAL_FILENAME_PATTERN = Pattern.compile("[\\\\:?\"<>|]");
 
     public static String asGmt(Date date) {
         return GMT_DATE_FORMAT.format(date) + " GMT";
