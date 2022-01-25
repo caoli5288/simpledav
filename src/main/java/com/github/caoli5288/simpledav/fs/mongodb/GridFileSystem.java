@@ -54,12 +54,12 @@ public class GridFileSystem implements IFileSystem {
         Objects.requireNonNull(filepath);
         GridFSBucket fs = asGrid(filepath.getBucket());
         if (path.endsWith("/")) {
-            GridFSFindIterable files = fs.find(Filters.regex("filename", filepath.getFilename() + "[^/]+"));
             List<FileNode> list = new ArrayList<>();
             list.add(FileNode.of(FileType.DIR)
                     .filename(path)
                     .modified(Constants.EMPTY_DATE));
             if (lookup) {
+                GridFSFindIterable files = fs.find(Filters.regex("filename", "^" + filepath.getFilename() + "[^/]+$"));
                 for (GridFSFile file : files) {
                     list.add(toNode(filepath.getBucket(), file));
                 }
