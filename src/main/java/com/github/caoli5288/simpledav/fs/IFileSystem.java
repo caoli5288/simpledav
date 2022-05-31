@@ -19,4 +19,6 @@ public interface IFileSystem {
     void mkdir(String path) throws IOException;
 
     void mv(String source, String des, boolean force) throws IOException;
+
+    void copy(String from, String dst) throws IOException;
 }

@@ -87,7 +87,17 @@ public class SimpleDAV {
             case "MOVE":
                 move(context);
                 break;
+            case "COPY":
+                copy(context);
+                break;
         }
+    }
+
+    static void copy(Context context) throws IOException {
+        String dst = context.header("Destination");
+        Objects.requireNonNull(dst, "Destination not defined");
+        dst = URI.create(dst).getPath();// URI context decided unicode chars
+        fs.copy(UrlEncoded.decodeString(context.path()), dst);
     }
 
     private static void move(Context context) throws IOException {

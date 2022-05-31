@@ -182,6 +182,12 @@ public class GridFileSystem implements IFileSystem {
         fs.rename(objSrc.getObjectId(), filename2);
     }
 
+    @Override
+    public void copy(String src, String dst) throws IOException {
+        // TODO
+        throw new UnsupportedOperationException();
+    }
+
     @NotNull
     private GridFSBucket asGrid(String name) {
         return buckets.computeIfAbsent(name, s -> GridFSBuckets.create(db, s));
